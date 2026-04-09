@@ -9,3 +9,11 @@ body {
   background: #050814;
   font-family: sans-serif;
 }
+
+@keyframes shine {
+  from { left: -100%; }
+  to { left: 200%; }
+}
+.group:hover .group-hover\:animate-shine {
+  animation: shine 1.5s infinite;
+}
