@@ -7,6 +7,7 @@ export default function PacksPage() {
   const [pack, setPack] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(-1);
   const [isOpening, setIsOpening] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
   const openingTimersRef = useRef([]);
 
   const rarityOrder = {
@@ -24,7 +25,7 @@ export default function PacksPage() {
     { rarity: 'RARE', weight: 1 / 7 },
     { rarity: 'EPIC', weight: 1 / 22 },
     { rarity: 'LEGENDARY', weight: 1 / 55 },
-    { rarity: 'MYTHIC', weight: 1 / 105 }
+    { rarity: 'MYTHIC', weight: 1 / 130 }
   ];
 
   const rollRarity = (weights) => {
@@ -98,6 +99,15 @@ export default function PacksPage() {
     openingTimersRef.current.push(revealTimer);
   };
 
+  const handleFinish = () => {
+    setIsFinishing(true);
+    setTimeout(() => {
+      setPack([]);
+      setCurrentIdx(-1);
+      setIsFinishing(false);
+    }, 1000);
+  };
+
   if (currentIdx === -1) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[75vh] relative">
@@ -117,16 +127,64 @@ export default function PacksPage() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-10 py-6">
-      <GameCard game={pack[currentIdx]} />
+    <div className="flex flex-col items-center gap-10 py-6 overflow-hidden min-h-[85vh]">
+      <div className="relative w-80 aspect-[2/3.1] my-4" style={{ perspective: '1200px' }}>
+        {pack.map((game, i) => {
+          const isActive = i === currentIdx;
+          const isPrev = i < currentIdx;
+          const isNext = i > currentIdx;
 
-      <div className="flex items-center gap-6">
+          let transform = 'translate3d(0, 0, 0) scale(1) rotate(0deg)';
+          let zIndex = 10;
+          let opacity = 1;
+          let pointerEvents = 'auto';
+
+          if (isFinishing) {
+            transform = `translate3d(0, 150vh, 0) rotate(${(i - 2) * 25}deg)`;
+            opacity = 0;
+            pointerEvents = 'none';
+          } else if (isPrev) {
+            const offset = currentIdx - i;
+            transform = `translate3d(-${45 + offset * 15}%, 0, -${350 * offset}px) scale(${1 - offset * 0.1}) rotate(-${8 + offset}deg)`;
+            zIndex = 10 - offset;
+            opacity = offset === 1 ? 0.6 : 0; 
+            pointerEvents = 'none';
+          } else if (isNext) {
+            const offset = i - currentIdx;
+            transform = `translate3d(${45 + offset * 15}%, 0, -${350 * offset}px) scale(${1 - offset * 0.1}) rotate(${8 + offset}deg)`;
+            zIndex = 10 - offset;
+            opacity = offset === 1 ? 0.6 : 0;
+            pointerEvents = 'none';
+          }
+
+          return (
+            <div
+              key={i}
+              className="absolute inset-0"
+              style={{
+                transform,
+                zIndex,
+                opacity,
+                pointerEvents,
+                transition: isFinishing 
+                  ? `all 0.6s cubic-bezier(0.5, -0.5, 0.5, 1.5) ${i * 100}ms`
+                  : 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
+                transformStyle: 'preserve-3d'
+              }}
+            >
+              <GameCard game={game} />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-6 mt-8 z-20 transition-opacity duration-300" style={{ opacity: isFinishing ? 0 : 1 }}>
         <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(prev => prev - 1)} className="p-4 rounded-full bg-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all">←</button>
         <div className="text-white font-black text-lg">{currentIdx + 1} / 5</div>
         {currentIdx < 4 ? (
           <button onClick={() => setCurrentIdx(prev => prev + 1)} className="cursor-pointer p-4 rounded-full bg-white/5 text-slate-400 hover:text-white transition-all">→</button>
         ) : (
-          <button onClick={() => { setPack([]); setCurrentIdx(-1); }} className="cursor-pointer px-10 py-3 rounded-2xl bg-white text-black font-black text-sm">FINISH</button>
+          <button onClick={handleFinish} className="cursor-pointer px-10 py-3 rounded-2xl bg-white text-black font-black text-sm hover:scale-105 transition-transform">FINISH</button>
         )}
       </div>
     </div>
