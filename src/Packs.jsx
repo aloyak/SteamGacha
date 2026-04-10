@@ -9,12 +9,31 @@ export default function PacksPage() {
   const [isOpening, setIsOpening] = useState(false);
   const openingTimersRef = useRef([]);
 
+  const rarityOrder = {
+    COMMON: 0,
+    UNCOMMON: 1,
+    RARE: 2,
+    EPIC: 3,
+    LEGENDARY: 4,
+    MYTHIC: 5
+  };
+
+  const rarityOdds = [
+    { rarity: 'COMMON', weight: 1 / 1.2 },
+    { rarity: 'UNCOMMON', weight: 1 / 3 },
+    { rarity: 'RARE', weight: 1 / 7 },
+    { rarity: 'EPIC', weight: 1 / 22 },
+    { rarity: 'LEGENDARY', weight: 1 / 55 },
+    { rarity: 'MYTHIC', weight: 1 / 105 }
+  ];
+
   const rollRarity = (weights) => {
-    const roll = Math.random() * 100;
+    const totalWeight = weights.reduce((sum, entry) => sum + entry.weight, 0);
+    const roll = Math.random() * totalWeight;
     let total = 0;
 
-    for (const { rarity, chance } of weights) {
-      total += chance;
+    for (const { rarity, weight } of weights) {
+      total += weight;
       if (roll < total) {
         return rarity;
       }
@@ -38,21 +57,8 @@ export default function PacksPage() {
   const buildPack = () => {
     const newPack = [];
 
-    const normalSlotWeights = [
-      { rarity: 'COMMON', chance: 50 },
-      { rarity: 'UNCOMMON', chance: 30 },
-      { rarity: 'RARE', chance: 20 }
-    ];
-
-    const finalSlotWeights = [
-      { rarity: 'EPIC', chance: 65 },
-      { rarity: 'LEGENDARY', chance: 25 },
-      { rarity: 'MYTHIC', chance: 10 }
-    ];
-
     for (let i = 0; i < 5; i++) {
-      const slotWeights = i === 4 ? finalSlotWeights : normalSlotWeights;
-      const target = rollRarity(slotWeights);
+      const target = rollRarity(rarityOdds);
       const options = pool.filter(g => g.rarity === target);
 
       if (options.length > 0) {
@@ -60,12 +66,14 @@ export default function PacksPage() {
         continue;
       }
 
-      const fallbackPool = pool.filter(g => slotWeights.some(({ rarity }) => rarity === g.rarity));
+      const fallbackPool = pool.filter(g => rarityOdds.some(({ rarity }) => rarity === g.rarity));
       const randomFallbackPool = fallbackPool.length > 0 ? fallbackPool : pool;
       newPack.push(randomFallbackPool[Math.floor(Math.random() * randomFallbackPool.length)]);
     }
 
-    return newPack;
+    return newPack.sort((left, right) => {
+      return (rarityOrder[left.rarity] ?? 0) - (rarityOrder[right.rarity] ?? 0);
+    });
   };
 
   const generatePack = () => {
