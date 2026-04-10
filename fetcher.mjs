@@ -1,8 +1,6 @@
 import fs from 'fs';
 
-async function fetchAllGames() {
-  console.log("Downloading full Steam catalog (this may take 30-60 seconds)...");
-  
+async function fetchAllGames() {  
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
@@ -24,19 +22,27 @@ async function fetchAllGames() {
       .map(game => {
         const totalReviews = game.positive + game.negative;
         const score = Math.round((game.positive / totalReviews) * 100);
+        const rawPrice = Number(game.price) || 0;
         
-        const isFree = game.price === "0" || game.price === 0;
+        const isFree = rawPrice === 0;
         const weightedReviews = isFree ? totalReviews * 0.5 : totalReviews;
+        const developer = typeof game.developer === 'string' && game.developer.trim()
+          ? game.developer.split(',')[0].trim()
+          : 'Unknown';
+        const price = rawPrice / 100;
 
         let rarity = "COMMON";
-        // Thresholds adjusted for the "All" catalog
-        if (score >= 95 && weightedReviews > 100000) rarity = "LEGENDARY";
+        if (score >= 97 && weightedReviews > 210000) rarity = "MYTHIC";
+        else if (score >= 95 && weightedReviews > 100000) rarity = "LEGENDARY";
         else if (score >= 90 && weightedReviews > 30000) rarity = "EPIC";
         else if (score >= 80 && weightedReviews > 5000) rarity = "RARE";
+        else if (score >= 70 && weightedReviews > 2000) rarity = "UNCOMMON";
 
         return {
           id: game.appid,
           name: game.name,
+          developer,
+          price,
           score,
           reviews: totalReviews,
           rarity,

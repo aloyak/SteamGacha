@@ -7,17 +7,54 @@ export default function PacksPage() {
   const [pack, setPack] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(-1);
 
+  const rollRarity = (weights) => {
+    const roll = Math.random() * 100;
+    let total = 0;
+
+    for (const { rarity, chance } of weights) {
+      total += chance;
+      if (roll < total) {
+        return rarity;
+      }
+    }
+
+    return weights[weights.length - 1].rarity;
+  };
+
   useEffect(() => {
     fetch('/games.json').then(res => res.json()).then(setPool);
   }, []);
 
   const generatePack = () => {
     const newPack = [];
+
+    const normalSlotWeights = [
+      { rarity: 'COMMON', chance: 50 },
+      { rarity: 'UNCOMMON', chance: 30 },
+      { rarity: 'RARE', chance: 20 }
+    ];
+
+    const finalSlotWeights = [
+      { rarity: 'EPIC', chance: 65 },
+      { rarity: 'LEGENDARY', chance: 25 },
+      { rarity: 'MYTHIC', chance: 10 }
+    ];
+
     for (let i = 0; i < 5; i++) {
-      let target = i === 4 ? (Math.random() > 0.8 ? "LEGENDARY" : "EPIC") : (Math.random() * 100 < 70 ? "COMMON" : "RARE");
+      const slotWeights = i === 4 ? finalSlotWeights : normalSlotWeights;
+      const target = rollRarity(slotWeights);
       const options = pool.filter(g => g.rarity === target);
-      newPack.push(options[Math.floor(Math.random() * options.length)] || pool[0]);
+
+      if (options.length > 0) {
+        newPack.push(options[Math.floor(Math.random() * options.length)]);
+        continue;
+      }
+
+      const fallbackPool = pool.filter(g => slotWeights.some(({ rarity }) => rarity === g.rarity));
+      const randomFallbackPool = fallbackPool.length > 0 ? fallbackPool : pool;
+      newPack.push(randomFallbackPool[Math.floor(Math.random() * randomFallbackPool.length)]);
     }
+
     setPack(newPack);
     setCurrentIdx(0);
     
@@ -38,12 +75,6 @@ export default function PacksPage() {
 
   return (
     <div className="flex flex-col items-center gap-10 py-6">
-      <div className="flex gap-4">
-        {pack.map((_, i) => (
-          <div key={i} onClick={() => setCurrentIdx(i)} className={`h-2 w-16 rounded-full cursor-pointer transition-all ${i === currentIdx ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-white/10'}`} />
-        ))}
-      </div>
-
       <GameCard game={pack[currentIdx]} />
 
       <div className="flex items-center gap-6">
