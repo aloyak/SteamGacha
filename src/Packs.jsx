@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import BoosterPack from './components/BoosterPack';
 import GameCard from './components/GameCard';
 
+const MAX_PACKS = 10;
+const COOLDOWN_MS = 15 * 60 * 1000;
+
 export default function PacksPage() {
   const [pool, setPool] = useState([]);
   const [pack, setPack] = useState([]);
@@ -9,6 +12,49 @@ export default function PacksPage() {
   const [isOpening, setIsOpening] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const openingTimersRef = useRef([]);
+
+  const [packsLeft, setPacksLeft] = useState(MAX_PACKS);
+  const [nextReset, setNextReset] = useState(null);
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    fetch('/games.json').then(res => res.json()).then(setPool);
+
+    const savedPacks = localStorage.getItem('packs_remaining');
+    const savedReset = localStorage.getItem('packs_next_reset');
+    
+    if (savedReset && Date.now() < parseInt(savedReset)) {
+      setNextReset(parseInt(savedReset));
+      setPacksLeft(parseInt(savedPacks) || 0);
+    } else {
+      resetPacks();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!nextReset) return;
+
+    const timer = setInterval(() => {
+      const remaining = nextReset - Date.now();
+      if (remaining <= 0) {
+        resetPacks();
+      } else {
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        setTimeLeft(`${mins}:${secs < 10 ? '0' : ''}${secs}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [nextReset]);
+
+  const resetPacks = () => {
+    const newReset = Date.now() + COOLDOWN_MS;
+    setPacksLeft(MAX_PACKS);
+    setNextReset(newReset);
+    localStorage.setItem('packs_remaining', MAX_PACKS);
+    localStorage.setItem('packs_next_reset', newReset);
+  };
 
   const rarityOrder = {
     COMMON: 0,
@@ -44,10 +90,6 @@ export default function PacksPage() {
   };
 
   useEffect(() => {
-    fetch('/games.json').then(res => res.json()).then(setPool);
-  }, []);
-
-  useEffect(() => {
     return () => {
       for (const timer of openingTimersRef.current) {
         clearTimeout(timer);
@@ -78,9 +120,13 @@ export default function PacksPage() {
   };
 
   const generatePack = () => {
-    if (isOpening || pool.length === 0) {
+    if (isOpening || pool.length === 0 || packsLeft <= 0) {
       return;
     }
+
+    const newPacksLeft = packsLeft - 1;
+    setPacksLeft(newPacksLeft);
+    localStorage.setItem('packs_remaining', newPacksLeft);
 
     setIsOpening(true);
 
@@ -110,17 +156,42 @@ export default function PacksPage() {
 
   if (currentIdx === -1) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[75vh] relative">
+      <div className="flex flex-col items-center justify-center min-h-[85vh] relative pt-12">
+        <div className="absolute top-4 flex gap-6 px-6 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full transition-opacity duration-300" 
+          style={{ opacity: isOpening ? 0 : 1 }}>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Packs:</span>
+          <span className={`text-sm font-black ${packsLeft === 0 ? 'text-red-500' : 'text-white'}`}>{packsLeft} / {MAX_PACKS}</span>
+        </div>
+        
+        <div className="w-[1px] h-4 bg-white/10 self-center" />
+        
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Refresh:</span>
+          <span className="text-sm font-mono text-blue-400 font-bold">{timeLeft}</span>
+        </div>
+
+        <div className="w-[1px] h-4 bg-white/10 self-center" />
+
+        <button 
+          onClick={resetPacks}
+          className="text-[10px] font-black uppercase tracking-tighter text-red-500 cursor-pointer"
+        >
+          Reset
+        </button>
+      </div>
         {isOpening && <div className="screen-flash-overlay" />}
 
-        <BoosterPack
-          onClick={generatePack}
-          disabled={isOpening}
-          packClassName={isOpening ? 'pack-animating' : ''}
-        />
+        <div className={packsLeft === 0 && !isOpening ? "grayscale opacity-50 pointer-events-none" : ""}>
+          <BoosterPack
+            onClick={generatePack}
+            disabled={isOpening || packsLeft === 0}
+            packClassName={isOpening ? 'pack-animating' : ''}
+          />
+        </div>
 
         <p className={`mt-12 font-black tracking-[0.5em] text-[10px] uppercase transition-opacity duration-300 ${isOpening ? 'opacity-0' : 'text-blue-400/60 animate-pulse'}`}>
-          Rip to Reveal
+          {packsLeft > 0 ? "Rip to Reveal" : "No Packs Remaining"}
         </p>
       </div>
     );
