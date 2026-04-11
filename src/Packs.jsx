@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import BoosterPack from './components/BoosterPack';
+import BoosterPack, { PACK_TYPES } from './components/BoosterPack';
 import GameCard from './components/GameCard';
 
 const MAX_PACKS = 10;
@@ -10,6 +10,7 @@ export default function PacksPage() {
   const [pack, setPack] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(-1);
   const [isOpening, setIsOpening] = useState(false);
+  const [openingType, setOpeningType] = useState(null);
   const [isFinishing, setIsFinishing] = useState(false);
   const openingTimersRef = useRef([]);
 
@@ -25,7 +26,7 @@ export default function PacksPage() {
     
     if (savedReset && Date.now() < parseInt(savedReset)) {
       setNextReset(parseInt(savedReset));
-      setPacksLeft(parseInt(savedPacks) || 0);
+      setPacksLeft(parseInt(savedPacks) ?? MAX_PACKS);
     } else {
       resetPacks();
     }
@@ -56,24 +57,6 @@ export default function PacksPage() {
     localStorage.setItem('packs_next_reset', newReset);
   };
 
-  const rarityOrder = {
-    COMMON: 0,
-    UNCOMMON: 1,
-    RARE: 2,
-    EPIC: 3,
-    LEGENDARY: 4,
-    MYTHIC: 5
-  };
-
-  const rarityOdds = [
-    { rarity: 'COMMON', weight: 1 / 1.2 },
-    { rarity: 'UNCOMMON', weight: 1 / 3 },
-    { rarity: 'RARE', weight: 1 / 7 },
-    { rarity: 'EPIC', weight: 1 / 25 },
-    { rarity: 'LEGENDARY', weight: 1 / 70 },
-    { rarity: 'MYTHIC', weight: 1 / 150 }
-  ];
-
   const rollRarity = (weights) => {
     const totalWeight = weights.reduce((sum, entry) => sum + entry.weight, 0);
     const roll = Math.random() * totalWeight;
@@ -89,53 +72,44 @@ export default function PacksPage() {
     return weights[weights.length - 1].rarity;
   };
 
-  useEffect(() => {
-    return () => {
-      for (const timer of openingTimersRef.current) {
-        clearTimeout(timer);
-      }
-    };
-  }, []);
-
-  const buildPack = () => {
+  const buildPack = (type) => {
     const newPack = [];
+    const weights = type === 'special' ? PACK_TYPES.SPECIAL.weights : PACK_TYPES.STANDARD.weights;
 
     for (let i = 0; i < 5; i++) {
-      const target = rollRarity(rarityOdds);
+      const target = rollRarity(weights);
       const options = pool.filter(g => g.rarity === target);
-
+      
       if (options.length > 0) {
         newPack.push(options[Math.floor(Math.random() * options.length)]);
-        continue;
+      } else {
+        newPack.push(pool[Math.floor(Math.random() * pool.length)]);
       }
-
-      const fallbackPool = pool.filter(g => rarityOdds.some(({ rarity }) => rarity === g.rarity));
-      const randomFallbackPool = fallbackPool.length > 0 ? fallbackPool : pool;
-      newPack.push(randomFallbackPool[Math.floor(Math.random() * randomFallbackPool.length)]);
     }
 
-    return newPack.sort((left, right) => {
-      return (rarityOrder[left.rarity] ?? 0) - (rarityOrder[right.rarity] ?? 0);
-    });
+    const rarityOrder = { COMMON: 0, UNCOMMON: 1, RARE: 2, EPIC: 3, LEGENDARY: 4, MYTHIC: 5 };
+    return newPack.sort((a, b) => (rarityOrder[a.rarity] ?? 0) - (rarityOrder[b.rarity] ?? 0));
   };
 
   const generatePack = () => {
-    if (isOpening || pool.length === 0 || packsLeft <= 0) {
-      return;
-    }
+    if (isOpening || pool.length === 0 || packsLeft <= 0) return;
 
+    const currentPackType = packsLeft === 1 ? 'special' : 'standard';
     const newPacksLeft = packsLeft - 1;
+    
+    setOpeningType(currentPackType);
     setPacksLeft(newPacksLeft);
     localStorage.setItem('packs_remaining', newPacksLeft);
 
     setIsOpening(true);
 
     const revealTimer = setTimeout(() => {
-      const newPack = buildPack();
+      const newPack = buildPack(currentPackType);
 
       setPack(newPack);
       setCurrentIdx(0);
       setIsOpening(false);
+      setOpeningType(null);
 
       const saved = JSON.parse(localStorage.getItem('steam_collection') || '[]');
       const filtered = newPack.filter(p => !saved.some(s => s.id === p.id));
@@ -159,39 +133,42 @@ export default function PacksPage() {
       <div className="flex flex-col items-center justify-center min-h-[85vh] relative pt-12">
         <div className="absolute top-4 flex gap-6 px-6 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full transition-opacity duration-300" 
           style={{ opacity: isOpening ? 0 : 1 }}>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Packs:</span>
-          <span className={`text-sm font-black ${packsLeft === 0 ? 'text-red-500' : 'text-white'}`}>{packsLeft} / {MAX_PACKS}</span>
-        </div>
-        
-        <div className="w-[1px] h-4 bg-white/10 self-center" />
-        
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Refresh:</span>
-          <span className="text-sm font-mono text-blue-400 font-bold">{timeLeft}</span>
-        </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Packs:</span>
+            <span className={`text-sm font-black ${packsLeft === 1 ? 'text-fuchsia-400' : packsLeft === 0 ? 'text-red-500' : 'text-white'}`}>
+              {packsLeft} / {MAX_PACKS}
+            </span>
+          </div>
 
-        <div className="w-[1px] h-4 bg-white/10 self-center" />
+          <div className="w-[1px] h-4 bg-white/10 self-center" />
 
-        <button 
-          onClick={resetPacks}
-          className="text-[10px] font-black uppercase tracking-tighter text-red-500 cursor-pointer"
-        >
-          Reset
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Refresh:</span>
+            <span className="text-sm font-mono text-blue-400 font-bold">{timeLeft}</span>
+          </div>
+
+          <div className="w-[1px] h-4 bg-white/10 self-center" />
+
+          <button 
+            onClick={resetPacks}
+            className="text-[10px] font-black uppercase tracking-tighter text-red-500 cursor-pointer"
+          >
+            Reset
+          </button>
+        </div>
         {isOpening && <div className="screen-flash-overlay" />}
 
         <div className={packsLeft === 0 && !isOpening ? "grayscale opacity-50 pointer-events-none" : ""}>
           <BoosterPack
             onClick={generatePack}
+            type={isOpening ? openingType : (packsLeft === 1 ? 'special' : 'standard')}
             disabled={isOpening || packsLeft === 0}
             packClassName={isOpening ? 'pack-animating' : ''}
           />
         </div>
 
         <p className={`mt-12 font-black tracking-[0.5em] text-[10px] uppercase transition-opacity duration-300 ${isOpening ? 'opacity-0' : 'text-blue-400/60 animate-pulse'}`}>
-          {packsLeft > 0 ? "Rip to Reveal" : "No Packs Remaining"}
+          {packsLeft === 1 ? "Open the Special Pack" : packsLeft > 0 ? "Rip to Reveal" : "No Packs Remaining"}
         </p>
       </div>
     );
@@ -229,20 +206,13 @@ export default function PacksPage() {
           }
 
           return (
-            <div
-              key={i}
-              className="absolute inset-0"
-              style={{
-                transform,
-                zIndex,
-                opacity,
-                pointerEvents,
-                transition: isFinishing 
-                  ? `all 0.6s cubic-bezier(0.5, -0.5, 0.5, 1.5) ${i * 100}ms`
-                  : 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
-                transformStyle: 'preserve-3d'
-              }}
-            >
+            <div key={i} className="absolute inset-0" style={{
+              transform, zIndex, opacity, pointerEvents,
+              transition: isFinishing 
+                ? `all 0.6s cubic-bezier(0.5, -0.5, 0.5, 1.5) ${i * 100}ms`
+                : 'all 0.6s cubic-bezier(0.23, 1, 0.32, 1)',
+              transformStyle: 'preserve-3d'
+            }}>
               <GameCard game={game} />
             </div>
           );
@@ -250,7 +220,7 @@ export default function PacksPage() {
       </div>
 
       <div className="flex items-center gap-6 mt-8 z-20 transition-opacity duration-300" style={{ opacity: isFinishing ? 0 : 1 }}>
-        <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(prev => prev - 1)} className="p-4 rounded-full bg-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all">←</button>
+        <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(prev => prev - 1)} className="cursor-pointer p-4 rounded-full bg-white/5 text-slate-400 hover:text-white disabled:opacity-20 transition-all">←</button>
         <div className="text-white font-black text-lg">{currentIdx + 1} / 5</div>
         {currentIdx < 4 ? (
           <button onClick={() => setCurrentIdx(prev => prev + 1)} className="cursor-pointer p-4 rounded-full bg-white/5 text-slate-400 hover:text-white transition-all">→</button>
