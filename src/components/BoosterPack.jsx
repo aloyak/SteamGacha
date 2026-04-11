@@ -17,10 +17,10 @@ export const PACK_TYPES = {
     id: 'special',
     img: '/packs/boosterpack_special.png',
     weights: [
-      { rarity: 'RARE', weight: 1 / 1.5 },
+      { rarity: 'RARE', weight: 1 / 2 },
       { rarity: 'EPIC', weight: 1 / 4 },
-      { rarity: 'LEGENDARY', weight: 1 / 12 },
-      { rarity: 'MYTHIC', weight: 1 / 40 }
+      { rarity: 'LEGENDARY', weight: 1 / 24 },
+      { rarity: 'MYTHIC', weight: 1 / 60 }
     ]
   }
 };

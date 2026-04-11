@@ -52,9 +52,9 @@ export default function Collection() {
 
   const renderGrid = (games, isStacked = false) => (
     <div className={`flex flex-wrap px-4 ${isStacked ? 'gap-y-12' : 'gap-10'}`}>
-      {games.map((game) => (
+      {games.map((game, idx) => (
         <div 
-          key={game.id} 
+          key={`${game.id}-${idx}`} 
           className={`
             group relative transition-all duration-300 ease-out 
             ${isStacked ? '-mr-16 last:mr-0 hover:z-50 hover:-translate-y-4 hover:scale-110' : 'hover:scale-105'}
@@ -79,12 +79,14 @@ export default function Collection() {
             </p>
             <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
               <button 
+                type="button"
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white/20 text-white' : 'text-slate-500 hover:text-slate-300'}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
               </button>
               <button 
+                type="button"
                 onClick={() => setViewMode('tiers')}
                 className={`p-1.5 rounded-md transition-all ${viewMode === 'tiers' ? 'bg-white/20 text-white' : 'text-slate-500 hover:text-slate-300'}`}
               >
@@ -109,6 +111,7 @@ export default function Collection() {
           </label>
 
           <button 
+            type="button"
             onClick={deleteCollection}
             className="text-[10px] font-black text-red-500/50 hover:text-red-500 uppercase tracking-widest transition-colors cursor-pointer"
           >
@@ -116,6 +119,7 @@ export default function Collection() {
           </button>
           
           <button 
+            type="button"
             onClick={() => window.location.reload()} 
             className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors cursor-pointer"
           >

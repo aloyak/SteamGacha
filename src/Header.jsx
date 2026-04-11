@@ -1,6 +1,8 @@
 const pages = [
   { id: 'packs', label: 'Packs' },
-  { id: 'collection', label: 'Collection' }
+  { id: 'collection', label: 'Collection' },
+  { id: 'lab', label: 'Lab' },
+  { id: 'market', label: 'Market' }
 ];
 
 export default function Header({ page, onPageChange }) {
