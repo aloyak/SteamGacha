@@ -2,8 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import GameCard from './components/GameCard';
 
 const STORAGE_KEY = 'steam_collection';
-const RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC', 'CELESTIAL'];
-const SECRET_RESULT_BY_RARITY = {
+const RARITIES = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC', 'CELESTIAL', 'UNREAL'];
+
+const NEXT_RARITY_MAP = {
+  COMMON: 'UNCOMMON',
+  UNCOMMON: 'RARE',
+  RARE: 'EPIC',
+  EPIC: 'LEGENDARY',
+  LEGENDARY: 'MYTHIC',
+  MYTHIC: 'CELESTIAL',
   CELESTIAL: 'UNREAL'
 };
 
@@ -24,7 +31,7 @@ export default function Lab() {
   }, []);
 
   const nextRarity = useMemo(() => {
-    return SECRET_RESULT_BY_RARITY[selectedRarity] || null;
+    return NEXT_RARITY_MAP[selectedRarity] || null;
   }, [selectedRarity]);
 
   const rarityCards = useMemo(
@@ -106,7 +113,7 @@ export default function Lab() {
 
     const candidates = pool.filter((game) => game.rarity === nextRarity);
     if (candidates.length === 0) {
-      setMessage('No cards available in the next rarity tier.');
+      setMessage(`No ${nextRarity} cards available in the database yet.`);
       return;
     }
 
@@ -122,7 +129,7 @@ export default function Lab() {
       const toSave = remaining.map(({ _labId, ...rest }) => rest);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
       setCollection(remaining);
-      setMessage(`Fusing failed: You already own this ${reward.rarity} card.`);
+      setMessage(`Fusion failed: You already own this ${reward.rarity} card.`);
     } else {
       const newReward = { ...reward, _labId: `${reward.id}-${Date.now()}` };
       const updatedCollection = [...remaining, newReward];
