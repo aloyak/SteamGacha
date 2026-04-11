@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-export default function GameCard({ game, size = 'w-80' }) {
+export default function GameCard({ game, size = 'w-80', disableLink = false, onClick, disabled = false }) {
   const containerRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
@@ -133,18 +133,17 @@ export default function GameCard({ game, size = 'w-80' }) {
 
   const developer = game.developer || 'Unknown';
 
-  return (
-    <a href={`https://store.steampowered.com/app/${game.id}`} target="_blank" rel="noopener noreferrer" style={{ perspective: '1200px', display: 'block' }} className="group">
-      <div
-        ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{
-          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-          transition: tilt.x === 0 ? 'transform 0.5s ease' : 'none'
-        }}
-        className={`${size} aspect-[2/3.1] rounded-xl border-2 relative overflow-hidden flex flex-col transform-gpu cursor-pointer ${currentTheme.wrapper}`}
-      >
+  const card = (
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+        transition: tilt.x === 0 ? 'transform 0.5s ease' : 'none'
+      }}
+      className={`${size} aspect-[2/3.1] rounded-xl border-2 relative overflow-hidden flex flex-col transform-gpu cursor-pointer ${currentTheme.wrapper}`}
+    >
         {isCelestial && (
           <>
             <div className="absolute inset-0 z-[1] bg-gradient-to-br from-[#050515] via-purple-950 to-[#0a001a]" />
@@ -220,7 +219,26 @@ export default function GameCard({ game, size = 'w-80' }) {
             </div>
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  if (disableLink) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        style={{ perspective: '1200px', display: 'block' }}
+        className="group text-left disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {card}
+      </button>
+    );
+  }
+
+  return (
+    <a href={`https://store.steampowered.com/app/${game.id}`} target="_blank" rel="noopener noreferrer" style={{ perspective: '1200px', display: 'block' }} className="group">
+      {card}
     </a>
   );
 }

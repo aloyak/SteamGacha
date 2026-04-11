@@ -85,3 +85,39 @@ body {
   pointer-events: none;
   animation: screen-flash 2s ease-in forwards;
 }
+
+@keyframes lab-transform-card {
+  0% {
+    transform: perspective(900px) scale(0.6) translateY(36px) rotateX(20deg) rotateZ(-8deg);
+    filter: brightness(0.6) saturate(1.1);
+    opacity: 0;
+  }
+  20% {
+    transform: perspective(900px) scale(0.82) translateY(18px) rotateX(10deg) rotateZ(4deg);
+    filter: brightness(0.9) saturate(1.2);
+    opacity: 1;
+  }
+  42% {
+    transform: perspective(900px) scale(1.12) translateY(-12px) rotateX(0deg) rotateZ(-2deg);
+    filter: brightness(1.55) saturate(1.35) drop-shadow(0 0 42px rgba(56, 189, 248, 0.72));
+    opacity: 1;
+  }
+  62% {
+    transform: perspective(900px) scale(1.04) translateY(0) rotateZ(1deg);
+    filter: brightness(1.2) saturate(1.2) drop-shadow(0 0 24px rgba(34, 211, 238, 0.5));
+  }
+  78% {
+    transform: perspective(900px) scale(1.07) translateY(-4px) rotateZ(-1deg);
+    filter: brightness(1.28) saturate(1.25) drop-shadow(0 0 28px rgba(59, 130, 246, 0.6));
+  }
+  100% {
+    transform: perspective(900px) scale(1) translateY(0) rotate(0deg);
+    filter: brightness(1);
+    opacity: 1;
+  }
+}
+
+.transform-card-anim {
+  animation: lab-transform-card 1.2s cubic-bezier(0.2, 0.9, 0.2, 1);
+  will-change: transform, filter, opacity;
+}
