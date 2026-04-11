@@ -87,7 +87,7 @@ export default function GameCard({ game, size = 'w-80', disableLink = false, onC
           radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255,255,255,0.8) 0%, transparent 50%),
           conic-gradient(from ${glare.x * 3}deg at ${glare.x}% ${glare.y}%, rgba(34,211,238,0.5), rgba(217,70,239,0.5), rgba(251,191,36,0.5), rgba(34,211,238,0.5))
         `,
-        opacity: glare.opacity === 0 ? 0.3 : glare.opacity, // Maintains an ambient 30% prismatic glow when idle
+        opacity: glare.opacity === 0 ? 0.3 : glare.opacity,
         mixBlendMode: 'color-dodge',
         transition: 'opacity 0.4s ease'
       };
@@ -144,15 +144,26 @@ export default function GameCard({ game, size = 'w-80', disableLink = false, onC
       }}
       className={`${size} aspect-[2/3.1] rounded-xl border-2 relative overflow-hidden flex flex-col transform-gpu cursor-pointer ${currentTheme.wrapper}`}
     >
+        {game.isRepeatedCelestial && (
+          <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-[4px] overflow-hidden rounded-xl">
+            <div className="absolute w-[160%] h-4 bg-red-400 rotate-60 shadow-[0_0_25px_rgba(220,38,38,1)]" />
+            <div className="absolute w-[160%] h-4 bg-red-400 -rotate-60 shadow-[0_0_25px_rgba(220,38,38,1)]" />
+            
+            <span className="relative z-10 text-4xl font-black uppercase italic tracking-tighter text-white drop-shadow-[0_8px_12px_rgba(0,0,0,0.9)]">
+              Repeated!
+            </span>
+          </div>
+        )}
+
         {isCelestial && (
           <>
             <div className="absolute inset-0 z-[1] bg-gradient-to-br from-[#050515] via-purple-950 to-[#0a001a]" />
-            
+
             <div className="absolute inset-0 z-[2] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-60 mix-blend-screen pointer-events-none" />
-            
+           
             <div className="absolute -top-12 -left-12 w-48 h-48 bg-cyan-500/40 blur-[50px] rounded-full mix-blend-screen animate-pulse pointer-events-none" />
             <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-fuchsia-500/40 blur-[50px] rounded-full mix-blend-screen animate-pulse delay-700 pointer-events-none" />
-            
+           
             <div 
               className="absolute inset-0 z-[30] pointer-events-none rounded-xl border-[2px] border-transparent" 
               style={{ 

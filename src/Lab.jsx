@@ -15,7 +15,8 @@ export default function Lab() {
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    setCollection(saved);
+    const normalized = saved.map((c, i) => ({ ...c, _labId: `${c.id}-${i}-${Date.now()}` }));
+    setCollection(normalized);
     fetch('/games.json').then((res) => res.json()).then(setPool);
   }, []);
 
@@ -30,7 +31,7 @@ export default function Lab() {
   );
 
   const selectedCards = useMemo(
-    () => rarityCards.filter((card) => selectedIds.includes(card.id)),
+    () => rarityCards.filter((card) => selectedIds.includes(card._labId)),
     [rarityCards, selectedIds]
   );
 
@@ -46,12 +47,12 @@ export default function Lab() {
   const renderStackedCards = (cards, selectable = false) => (
     <div className="flex flex-wrap px-4 gap-y-12">
       {cards.map((card, idx) => {
-        const isSelected = selectedIds.includes(card.id);
+        const isSelected = selectedIds.includes(card._labId);
         const reachedLimit = selectable && !isSelected && selectedIds.length >= 5;
 
         return (
           <div
-            key={`${card.id}-${idx}`}
+            key={card._labId}
             className={`group relative transition-all duration-300 ease-out -mr-16 last:mr-0 hover:z-50 hover:-translate-y-4 hover:scale-110 ${
               isSelected ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900 rounded-xl' : ''
             } ${reachedLimit ? 'opacity-60' : ''}`}
@@ -62,7 +63,7 @@ export default function Lab() {
                 size="w-60"
                 disableLink={selectable}
                 disabled={reachedLimit}
-                onClick={selectable ? () => toggleCard(card.id) : undefined}
+                onClick={selectable ? () => toggleCard(card._labId) : undefined}
               />
             </div>
           </div>
@@ -71,20 +72,20 @@ export default function Lab() {
     </div>
   );
 
-  const toggleCard = (cardId) => {
+  const toggleCard = (labId) => {
     setMessage('');
     setResult(null);
 
     setSelectedIds((prev) => {
-      if (prev.includes(cardId)) {
-        return prev.filter((id) => id !== cardId);
+      if (prev.includes(labId)) {
+        return prev.filter((id) => id !== labId);
       }
 
       if (prev.length >= 5) {
         return prev;
       }
 
-      return [...prev, cardId];
+      return [...prev, labId];
     });
   };
 
@@ -109,18 +110,29 @@ export default function Lab() {
 
     const reward = candidates[Math.floor(Math.random() * candidates.length)];
     const selectedIdSet = new Set(selectedIds);
-    const remaining = collection.filter((card) => !selectedIdSet.has(card.id));
+    
+    const remaining = collection.filter((card) => !selectedIdSet.has(card._labId));
+    
+    const isDuplicateCelestial = reward.rarity === 'CELESTIAL' && remaining.some(c => c.id === reward.id);
+    
+    if (isDuplicateCelestial) {
+      setResult({ ...reward, isRepeatedCelestial: true });
+      const toSave = remaining.map(({ _labId, ...rest }) => rest);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      setCollection(remaining);
+      setMessage(`Fusing failed: You already own this Celestial card.`);
+    } else {
+      const newReward = { ...reward, _labId: `${reward.id}-${Date.now()}` };
+      const updatedCollection = [...remaining, newReward];
+      const toSave = updatedCollection.map(({ _labId, ...rest }) => rest);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      setCollection(updatedCollection);
+      setResult(reward);
+      setMessage(`Transformed into ${reward.name} (${reward.rarity})`);
+    }
 
-    const updatedCollection = remaining.some((card) => card.id === reward.id)
-      ? remaining
-      : [...remaining, reward];
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCollection));
-    setCollection(updatedCollection);
     setSelectedIds([]);
-    setResult(reward);
     setResultAnimKey((prev) => prev + 1);
-    setMessage(`Transformed into ${reward.name} (${reward.rarity})`);
   };
 
   return (

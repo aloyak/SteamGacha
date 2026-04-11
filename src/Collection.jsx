@@ -25,6 +25,10 @@ export default function Collection() {
         return a._originalIndex - b._originalIndex;
       }
 
+      if (order === 'name') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+
       if (order === 'category') {
         const leftRank = categoryRank[a.rarity] || 0;
         const rightRank = categoryRank[b.rarity] || 0;
@@ -108,6 +112,7 @@ export default function Collection() {
               <option value="newest">Newest</option>
               <option value="oldest">Oldest</option>
               <option value="category">Category</option>
+              <option value="name">Name</option>
             </select>
           </label>
 

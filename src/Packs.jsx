@@ -105,15 +105,23 @@ export default function PacksPage() {
 
     const revealTimer = setTimeout(() => {
       const newPack = buildPack(currentPackType);
+      const saved = JSON.parse(localStorage.getItem('steam_collection') || '[]');
 
-      setPack(newPack);
+      const processedPack = newPack.map(card => {
+        const isDuplicateCelestial = card.rarity === 'CELESTIAL' && saved.some(s => s.id === card.id);
+        if (isDuplicateCelestial) {
+          return { ...card, isRepeatedCelestial: true };
+        }
+        return card;
+      });
+
+      const cardsToSave = processedPack.filter(p => !p.isRepeatedCelestial);
+      localStorage.setItem('steam_collection', JSON.stringify([...saved, ...cardsToSave]));
+
+      setPack(processedPack);
       setCurrentIdx(0);
       setIsOpening(false);
       setOpeningType(null);
-
-      const saved = JSON.parse(localStorage.getItem('steam_collection') || '[]');
-      const filtered = newPack.filter(p => !saved.some(s => s.id === p.id));
-      localStorage.setItem('steam_collection', JSON.stringify([...saved, ...filtered]));
     }, 2000);
 
     openingTimersRef.current.push(revealTimer);
