@@ -14,8 +14,7 @@ export default function Header({ page, onPageChange }) {
         <div className="w-28 text-xs font-medium text-slate-500">
           By <a href="https://aloyak.dev" className="text-blue-400 hover:text-blue-300">4loyak!</a>
         </div>
-
-        <nav className="flex justify-center gap-4">
+        <nav className="absolute left-1/2 transform -translate-x-1/2 flex justify-center gap-4">
           {pages.map((item) => (
             <button
               key={item.id}
