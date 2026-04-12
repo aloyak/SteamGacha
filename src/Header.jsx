@@ -1,6 +1,7 @@
 import { FaGithub } from 'react-icons/fa';
 import { useEffect, useMemo, useState } from 'react';
 import CursorPopup from './components/Popup';
+import { getMoney, MONEY_CHANGED_EVENT } from './economy';
 
 const pages = [
   { id: 'packs', label: 'Packs' },
@@ -12,10 +13,24 @@ const pages = [
 export default function Header({ page, onPageChange }) {
   const [collection, setCollection] = useState([]);
   const [arcanaHover, setArcanaHover] = useState({ open: false, x: 0, y: 0 });
+  const [money, setMoney] = useState(0);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('steam_collection') || '[]');
     setCollection(saved);
+  }, []);
+
+  useEffect(() => {
+    const syncMoney = () => setMoney(getMoney());
+    syncMoney();
+
+    window.addEventListener(MONEY_CHANGED_EVENT, syncMoney);
+    window.addEventListener('storage', syncMoney);
+
+    return () => {
+      window.removeEventListener(MONEY_CHANGED_EVENT, syncMoney);
+      window.removeEventListener('storage', syncMoney);
+    };
   }, []);
 
   const hasArcanaPage = false;
@@ -29,10 +44,7 @@ export default function Header({ page, onPageChange }) {
 
   return (
     <header className="border-b border-white/10 bg-[#050814] px-4 py-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="w-28 text-xs font-medium text-slate-500">
-          By <a href="https://aloyak.dev" className="text-blue-400 hover:text-blue-300">4loyak!</a>
-        </div>
+      <div className="relative flex items-center justify-between gap-4">
         <nav className="absolute left-1/2 transform -translate-x-1/2 flex justify-center gap-4">
           {pages.map((item) => (
             <button
@@ -67,23 +79,33 @@ export default function Header({ page, onPageChange }) {
 
             <CursorPopup open={arcanaHover.open} x={arcanaHover.x} y={arcanaHover.y}>
               <div className="max-w-[180px]">
-                <p className="font-semibold text-white">Coming soon</p>
+                <p className="font-semibold text-white">Coming soon!</p>
                 <p className="mt-1 text-[11px] leading-snug text-slate-300">
-                  You need at least 150 unique cards and 1 Mythic card to access Arcana!
+                  You need at least 150 unique cards and 1 Mythic card to access Arcana
                 </p>
               </div>
             </CursorPopup>
           </div>
         </nav>
 
-        <a
-          href="https://github.com/aloyak/steamgacha"
-          aria-label="GitHub"
-          className="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-slate-400 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
-          title="GitHub"
-        >
-          <FaGithub className="h-5 w-5" aria-hidden="true" />
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://github.com/aloyak/steamgacha"
+            aria-label="GitHub"
+            className="flex h-10 w-10 items-center justify-center rounded-md border border-white/10 text-slate-400 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
+            title="GitHub"
+          >
+            <FaGithub className="h-5 w-5" aria-hidden="true" />
+          </a>
+          <span className="text-xs font-medium text-slate-500">
+            By <a href="https://aloyak.dev" className="text-blue-400 hover:text-blue-300">4loyak!</a>
+          </span>
+        </div>
+
+        <div className="rounded-md border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5">
+          <p className="text-[10px] uppercase tracking-widest text-emerald-300/80">Money</p>
+          <p className="text-sm font-bold text-emerald-200">${money.toLocaleString()}</p>
+        </div>
       </div>
     </header>
   );

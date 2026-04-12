@@ -47,8 +47,21 @@ export default function Collection() {
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('steam_collection') || '[]');
-    setItems(saved);
-    fetch('/games.json').then((res) => res.json()).then(setCatalog);
+
+    fetch('/games.json')
+      .then((res) => res.json())
+      .then((games) => {
+        setCatalog(games);
+
+        const byId = new Map(games.map((game) => [game.id, game]));
+        const hydrated = saved.map((item) => {
+          const fromCatalog = byId.get(item.id);
+          return fromCatalog ? { ...fromCatalog, ...item } : item;
+        });
+
+        setItems(hydrated);
+        localStorage.setItem('steam_collection', JSON.stringify(hydrated));
+      });
   }, []);
 
   const discoveredCount = useMemo(() => {

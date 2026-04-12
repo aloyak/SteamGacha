@@ -27,9 +27,22 @@ export default function Lab() {
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    const normalized = saved.map((c, i) => ({ ...c, _labId: `${c.id}-${i}-${Date.now()}` }));
-    setCollection(normalized);
-    fetch('/games.json').then((res) => res.json()).then(setPool);
+
+    fetch('/games.json')
+      .then((res) => res.json())
+      .then((games) => {
+        setPool(games);
+
+        const byId = new Map(games.map((game) => [game.id, game]));
+        const hydrated = saved.map((item) => {
+          const fromCatalog = byId.get(item.id);
+          return fromCatalog ? { ...fromCatalog, ...item } : item;
+        });
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(hydrated));
+        const normalized = hydrated.map((c, i) => ({ ...c, _labId: `${c.id}-${i}-${Date.now()}` }));
+        setCollection(normalized);
+      });
   }, []);
 
   const nextRarity = useMemo(() => {
