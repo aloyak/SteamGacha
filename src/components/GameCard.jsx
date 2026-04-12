@@ -148,11 +148,11 @@ export default function GameCard({ game, size = 'w-80', disableLink = false, onC
     return { opacity: 0, transition: 'opacity 0.4s ease' };
   };
 
-  const formattedPrice = typeof game.price === 'number'
-    ? (game.price === 0 ? 'Free' : `$${game.price.toFixed(2)}`)
-    : (game.isFree ? 'Free' : 'N/A');
-
   const developer = game.developer || 'Unknown';
+  const rawPrestige = Number(game.prestigeScore);
+  const powerScore = Number.isFinite(rawPrestige)
+    ? Math.round(rawPrestige * 1000)
+    : 'N/A';
 
   const card = (
     <div
@@ -242,8 +242,8 @@ export default function GameCard({ game, size = 'w-80', disableLink = false, onC
               <p className={`font-mono text-base font-bold px-2 py-0.5 rounded ${isUnreal ? 'bg-slate-100' : 'bg-black/20'}`}>{game.score}%</p>
             </div>
             <div className="flex flex-col items-center">
-              <p className="text-[9px] opacity-60 uppercase font-black tracking-wider mb-1">Cost</p>
-              <p className={`font-mono text-base font-bold px-2 py-0.5 rounded ${isUnreal ? 'bg-slate-100' : 'bg-black/20'}`}>{formattedPrice}</p>
+              <p className="text-[9px] opacity-60 uppercase font-black tracking-wider mb-1">PWR!</p>
+              <p className={`font-mono text-base font-bold px-2 py-0.5 rounded ${isUnreal ? 'bg-slate-100' : 'bg-black/20'}`}>{powerScore}</p>
             </div>
             <div className="flex flex-col items-center">
               <p className="text-[9px] opacity-60 uppercase font-black tracking-wider mb-1">Pop</p>

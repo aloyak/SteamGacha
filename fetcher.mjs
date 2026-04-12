@@ -56,7 +56,6 @@ async function fetchAllGames() {
           id: game.appid,
           name: game.name,
           developer: typeof game.developer === 'string' ? game.developer.split(',')[0].trim() : 'Unknown',
-          price: rawPrice / 100,
           score: Math.round(score),
           reviews: totalReviews,
           prestigeScore,
@@ -81,8 +80,7 @@ async function fetchAllGames() {
       else if (percentile < 30.0) rarity = "RARE";
       else if (percentile < 60.0) rarity = "UNCOMMON";
 
-      const { prestigeScore, ...cleanGame } = game;
-      return { ...cleanGame, rarity };
+      return { ...game, rarity };
     });
 
     fs.writeFileSync('./public/games.json', JSON.stringify(finalGames, null, 2));
