@@ -1,4 +1,6 @@
 import { FaGithub } from 'react-icons/fa';
+import { useEffect, useMemo, useState } from 'react';
+import CursorPopup from './components/Popup';
 
 const pages = [
   { id: 'packs', label: 'Packs' },
@@ -8,6 +10,23 @@ const pages = [
 ];
 
 export default function Header({ page, onPageChange }) {
+  const [collection, setCollection] = useState([]);
+  const [arcanaHover, setArcanaHover] = useState({ open: false, x: 0, y: 0 });
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('steam_collection') || '[]');
+    setCollection(saved);
+  }, []);
+
+  const hasArcanaPage = false;
+  const canAccessArcana = useMemo(() => {
+    const hasEnoughCards = new Set(collection.map((card) => card.id)).size >= 150;
+    const hasMythicCard = collection.some((card) => card.rarity === 'MYTHIC');
+    return hasEnoughCards && hasMythicCard;
+  }, [collection]);
+
+  const showArcanaPopup = !hasArcanaPage || !canAccessArcana;
+
   return (
     <header className="border-b border-white/10 bg-[#050814] px-4 py-4">
       <div className="flex items-center justify-between gap-4">
@@ -26,6 +45,35 @@ export default function Header({ page, onPageChange }) {
               {item.label}
             </button>
           ))}
+          <div
+            className="relative"
+            onMouseEnter={(event) => setArcanaHover({ open: showArcanaPopup, x: event.clientX, y: event.clientY })}
+            onMouseMove={(event) => setArcanaHover((prev) => ({ ...prev, x: event.clientX, y: event.clientY }))}
+            onMouseLeave={() => setArcanaHover({ open: false, x: 0, y: 0 })}
+          >
+            <button
+              onClick={() => onPageChange('arcana')}
+              disabled={!hasArcanaPage || !canAccessArcana}
+              className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition ${
+                !hasArcanaPage || !canAccessArcana
+                  ? 'cursor-not-allowed opacity-40 text-slate-500'
+                  : page === 'arcana'
+                    ? 'bg-white/10 text-white'
+                    : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Arcana
+            </button>
+
+            <CursorPopup open={arcanaHover.open} x={arcanaHover.x} y={arcanaHover.y}>
+              <div className="max-w-[180px]">
+                <p className="font-semibold text-white">Coming soon</p>
+                <p className="mt-1 text-[11px] leading-snug text-slate-300">
+                  You need at least 150 unique cards and 1 Mythic card to access Arcana!
+                </p>
+              </div>
+            </CursorPopup>
+          </div>
         </nav>
 
         <a
