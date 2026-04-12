@@ -161,7 +161,7 @@ export default function PacksPage() {
             onClick={resetPacks}
             className="text-[10px] font-black uppercase tracking-tighter text-red-500 cursor-pointer"
           >
-            Reset
+            Debug Reset
           </button>
         </div>
         {isOpening && <div className="screen-flash-overlay" />}
