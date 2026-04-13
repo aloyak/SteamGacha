@@ -50,6 +50,25 @@ export default function PacksPage() {
     return () => clearInterval(timer);
   }, [nextReset]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        
+        if (currentIdx === -1) {
+          generatePack();
+        } else if (currentIdx >= 0 && currentIdx < 4) {
+          setCurrentIdx(prev => prev + 1);
+        } else if (currentIdx === 4) {
+          handleFinish();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIdx, isOpening, packsLeft, pool]);
+
   const resetPacks = () => {
     const newReset = Date.now() + COOLDOWN_MS;
     setPacksLeft(MAX_PACKS);

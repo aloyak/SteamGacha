@@ -11,6 +11,7 @@ export default function Collection() {
   const [catalog, setCatalog] = useState([]);
   const [order, setOrder] = useState('newest');
   const [viewMode, setViewMode] = useState('grid');
+  const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(200);
 
   const sortedItems = [...items]
@@ -38,9 +39,21 @@ export default function Collection() {
       return b._originalIndex - a._originalIndex;
     });
 
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return sortedItems;
+    }
+
+    return sortedItems.filter((item) =>
+      (item.name || '').toLowerCase().includes(query)
+    );
+  }, [sortedItems, searchQuery]);
+
   const tierOrderedItems = useMemo(() => {
     if (viewMode !== 'tiers') {
-      return sortedItems;
+      return filteredItems;
     }
 
     const grouped = categories.reduce((acc, category) => {
@@ -49,7 +62,7 @@ export default function Collection() {
     }, {});
     const extras = [];
 
-    for (const item of sortedItems) {
+    for (const item of filteredItems) {
       if (grouped[item.rarity]) {
         grouped[item.rarity].push(item);
       } else {
@@ -58,15 +71,15 @@ export default function Collection() {
     }
 
     return [...categories.flatMap((category) => grouped[category]), ...extras];
-  }, [sortedItems, viewMode]);
+  }, [filteredItems, viewMode]);
 
-  const displayItems = viewMode === 'tiers' ? tierOrderedItems : sortedItems;
+  const displayItems = viewMode === 'tiers' ? tierOrderedItems : filteredItems;
   const visibleItems = displayItems.slice(0, visibleCount);
   const hasMore = visibleCount < displayItems.length;
 
   useEffect(() => {
     setVisibleCount(200);
-  }, [order, viewMode]);
+  }, [order, viewMode, searchQuery]);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -152,7 +165,7 @@ export default function Collection() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-end mb-12">
+      <div className="flex flex-wrap justify-between items-end gap-4 mb-12">
         <div>
           <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter">My Collection</h2>
           <div className="flex items-center gap-4 mt-2">
@@ -176,6 +189,16 @@ export default function Collection() {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="flex-1 min-w-[220px] max-w-md">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search..."
+            className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-white/30"
+          />
         </div>
 
         <div className="flex gap-8 items-center">
