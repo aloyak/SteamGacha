@@ -46,8 +46,31 @@ export default function Collection() {
       return b._originalIndex - a._originalIndex;
     });
 
-  const visibleItems = sortedItems.slice(0, visibleCount);
-  const hasMore = visibleCount < sortedItems.length;
+  const tierOrderedItems = useMemo(() => {
+    if (viewMode !== 'tiers') {
+      return sortedItems;
+    }
+
+    const grouped = categories.reduce((acc, category) => {
+      acc[category] = [];
+      return acc;
+    }, {});
+    const extras = [];
+
+    for (const item of sortedItems) {
+      if (grouped[item.rarity]) {
+        grouped[item.rarity].push(item);
+      } else {
+        extras.push(item);
+      }
+    }
+
+    return [...categories.flatMap((category) => grouped[category]), ...extras];
+  }, [sortedItems, viewMode]);
+
+  const displayItems = viewMode === 'tiers' ? tierOrderedItems : sortedItems;
+  const visibleItems = displayItems.slice(0, visibleCount);
+  const hasMore = visibleCount < displayItems.length;
 
   useEffect(() => {
     setVisibleCount(200);
@@ -129,7 +152,7 @@ export default function Collection() {
           Load More
         </button>
         <p className="text-slate-600 font-mono text-[10px] uppercase tracking-widest">
-          Showing {visibleCount} of {sortedItems.length}
+          Showing {visibleCount} of {displayItems.length}
         </p>
       </div>
     )
