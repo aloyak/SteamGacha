@@ -68,7 +68,7 @@ export const PACK_CONFIG = {
         { rarity: 'RARE', weight: 1 / 7 },
         { rarity: 'EPIC', weight: 1 / 25 },
         { rarity: 'LEGENDARY', weight: 1 / 70 },
-        { rarity: 'MYTHIC', weight: 1 / 1 },
+        { rarity: 'MYTHIC', weight: 1 / 150 },
         { rarity: 'CELESTIAL', weight: 1 / 400 }
       ]
     },
