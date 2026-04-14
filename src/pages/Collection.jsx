@@ -59,24 +59,34 @@ export default function Collection({ session }) {
         setCatalog(games);
         const byId = new Map(games.map((g) => [String(g.id), g]));
         
-        let savedRaw = [];
+        const localData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        
         if (session) {
-          const { data, error } = await supabase
+          const { data: cloudCards, error } = await supabase
             .from('card_instances')
             .select('*')
             .eq('owner_id', session.user.id);
-          if (!error && data) savedRaw = data;
+          
+          if (error) throw error;
+
+          const syncedInstances = (cloudCards || []).map(inst => ({
+            ...byId.get(String(inst.catalog_id)),
+            ...inst,
+            isCloud: true
+          }));
+
+          const pendingLocal = localData
+            .filter(lc => !lc.instance_id)
+            .map(lc => ({ ...byId.get(String(lc.id)), ...lc, isCloud: false }));
+
+          setItems([...syncedInstances, ...pendingLocal]);
         } else {
-          savedRaw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          const hydratedLocal = localData.map(lc => ({
+            ...byId.get(String(lc.id)),
+            ...lc
+          }));
+          setItems(hydratedLocal);
         }
-
-        const hydrated = savedRaw.map((inst) => {
-          const catalogId = String(inst.catalog_id || inst.id);
-          const data = byId.get(catalogId);
-          return data ? { ...data, ...inst } : null;
-        }).filter(Boolean);
-
-        setItems(hydrated);
       } catch (err) {
         console.error(err);
       } finally {
@@ -107,6 +117,9 @@ export default function Collection({ session }) {
       {games.map((game, idx) => (
         <div key={`${game.instance_id || game.id}-${idx}`} className={`group relative transition-all duration-300 ${isStacked ? '-mr-16 last:mr-0 hover:z-50 hover:-translate-y-4 hover:scale-110' : 'hover:scale-105'}`}>
           <GameCard game={game} size="w-60" />
+          {!game.instance_id && session && (
+            <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-amber-500 text-[8px] font-black text-black rounded uppercase z-10">Syncing</div>
+          )}
         </div>
       ))}
     </div>

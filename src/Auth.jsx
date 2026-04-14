@@ -63,7 +63,7 @@ export default function Auth({ onAuthSuccess }) {
 
   return (
     <div className="max-w-md mx-auto mt-20 p-8 bg-[#050814] border border-white/10 rounded-2xl shadow-2xl">
-      <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-6">
+      <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-6">
         {isSignup ? 'Sign Up' : 'Log In'}
       </h2>
       <p className="text-xs text-yellow-400 uppercase font-black pb-3">
@@ -123,7 +123,7 @@ export default function Auth({ onAuthSuccess }) {
         onClick={() => setIsSignup(!isSignup)}
         className="w-full mt-4 text-[10px] uppercase font-black text-slate-500 hover:text-white transition"
       >
-        {isSignup ? 'Already have an account? Log in' : "New operative? Create account"}
+        {isSignup ? 'Already have an account? Log in' : "You don't have an account? Create account"}
       </button>
     </div>
   );

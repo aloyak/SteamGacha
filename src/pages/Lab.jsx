@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import GameCard from '../components/GameCard';
+import { supabase } from '../supabaseClient';
 import {
   STORAGE_KEYS,
   RARITIES,
@@ -10,7 +11,7 @@ import {
 const STORAGE_KEY = STORAGE_KEYS.COLLECTION;
 const FUSION_SUCCESS_RATE = LAB_CONFIG.FUSION_SUCCESS_RATE;
 
-export default function Lab() {
+export default function Lab({ session }) {
   const [collection, setCollection] = useState([]);
   const [pool, setPool] = useState([]);
   const [selectedRarity, setSelectedRarity] = useState('COMMON');
@@ -21,33 +22,59 @@ export default function Lab() {
   const [message, setMessage] = useState('Pick 5 cards from one rarity, then transform them.');
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    loadData();
+  }, [session]);
 
-    fetch('/games.json')
-      .then((res) => res.json())
-      .then((games) => {
-        setPool(games);
+  const loadData = async () => {
+    try {
+      const res = await fetch('/games.json');
+      const games = await res.json();
+      setPool(games);
+      const byId = new Map(games.map((g) => [String(g.id), g]));
 
-        const byId = new Map(games.map((game) => [game.id, game]));
-        const hydrated = saved.map((item) => {
-          const fromCatalog = byId.get(item.id);
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      let hydrated = [];
+
+      if (session) {
+        const { data: cloudCards } = await supabase
+          .from('card_instances')
+          .select('*')
+          .eq('owner_id', session.user.id);
+        
+        const synced = (cloudCards || []).map(inst => ({
+          ...byId.get(String(inst.catalog_id)),
+          ...inst,
+          isCloud: true
+        }));
+
+        const pending = saved
+          .filter(s => !s.instance_id)
+          .map(s => ({ ...byId.get(String(s.id)), ...s, isCloud: false }));
+
+        hydrated = [...synced, ...pending];
+      } else {
+        hydrated = saved.map((item) => {
+          const fromCatalog = byId.get(String(item.id));
           return fromCatalog ? { ...fromCatalog, ...item } : item;
         });
+      }
 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(hydrated));
-        const normalized = hydrated.map((c, i) => ({ ...c, _labId: `${c.id}-${i}-${Date.now()}` }));
-        setCollection(normalized);
-      });
-  }, []);
+      const normalized = hydrated.map((c, i) => ({ 
+        ...c, 
+        _labId: c.instance_id || c._labId || `${c.id}-${i}-${Date.now()}` 
+      }));
+      setCollection(normalized);
+    } catch (err) {
+      console.error("Error loading lab data:", err);
+    }
+  };
 
   const nextRarity = useMemo(() => {
     return NEXT_RARITY_MAP[selectedRarity] || null;
   }, [selectedRarity]);
 
   const displayNextRarity = useMemo(() => {
-    if (selectedRarity === 'CELESTIAL') {
-      return '???';
-    }
+    if (selectedRarity === 'CELESTIAL') return '???';
     return nextRarity || 'MAX TIER';
   }, [nextRarity, selectedRarity]);
 
@@ -70,9 +97,100 @@ export default function Lab() {
 
   const canTransform = selectedCards.length === 5 && !!nextRarity;
 
+  const toggleCard = (labId) => {
+    setMessage('');
+    setResult(null);
+    setFusionState(null);
+
+    setSelectedIds((prev) => {
+      if (prev.includes(labId)) return prev.filter((id) => id !== labId);
+      if (prev.length >= 5) return prev;
+      return [...prev, labId];
+    });
+  };
+
+  const handleRarityChange = (rarity) => {
+    setSelectedRarity(rarity);
+    setSelectedIds([]);
+    setResult(null);
+    setFusionState(null);
+    setMessage('Pick 5 cards from one rarity, then transform them.');
+  };
+
+  const transform = async () => {
+    if (!canTransform) {
+      setMessage('You need exactly 5 cards from the selected rarity.');
+      return;
+    }
+
+    const candidates = pool.filter((game) => game.rarity === nextRarity);
+    if (candidates.length === 0) {
+      setMessage(`No ${nextRarity} cards available in the database yet.`);
+      return;
+    }
+
+    setFusionState('fusing');
+    const selectedIdSet = new Set(selectedIds);
+    const remaining = collection.filter((card) => !selectedIdSet.has(card._labId));
+
+    const cloudIdsToDelete = selectedCards
+      .map(c => c.instance_id)
+      .filter(Boolean);
+
+    if (session && cloudIdsToDelete.length > 0) {
+      await supabase.from('card_instances').delete().in('instance_id', cloudIdsToDelete);
+    }
+
+    if (Math.random() * 100 > FUSION_SUCCESS_RATE) {
+      const toSave = remaining.map(({ _labId, isCloud, ...rest }) => rest);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      setCollection(remaining);
+      setResult(null);
+      setFusionState('failed');
+      setMessage('FUSION FAILED: The chamber destabilized and consumed all 5 cards.');
+    } else {
+      const reward = candidates[Math.floor(Math.random() * candidates.length)];
+      const isDuplicateSecret = ['CELESTIAL', 'UNREAL'].includes(reward.rarity) && remaining.some(c => c.id === reward.id);
+      
+      if (isDuplicateSecret) {
+        setResult({ ...reward, isRepeatedCelestial: true });
+        setFusionState('failed');
+        const toSave = remaining.map(({ _labId, isCloud, ...rest }) => rest);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        setCollection(remaining);
+        setMessage(`Fusion failed: You already own this ${reward.rarity} card.`);
+      } else {
+        let finalReward = { ...reward, _labId: `${reward.id}-${Date.now()}` };
+
+        if (session) {
+          const { data, error } = await supabase.from('card_instances').insert({
+            owner_id: session.user.id,
+            catalog_id: String(reward.id),
+            rarity: reward.rarity
+          }).select().single();
+          
+          if (!error && data) {
+            finalReward = { ...finalReward, ...data, isCloud: true };
+          }
+        }
+
+        const updatedCollection = [...remaining, finalReward];
+        const toSave = updatedCollection.map(({ _labId, isCloud, ...rest }) => rest);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        setCollection(updatedCollection);
+        setResult(reward);
+        setFusionState('success');
+        setMessage(`Transformed into ${reward.name} (${reward.rarity})`);
+      }
+    }
+
+    setSelectedIds([]);
+    setResultAnimKey((prev) => prev + 1);
+  };
+
   const renderStackedCards = (cards, selectable = false) => (
     <div className="flex flex-wrap px-4 gap-y-12">
-      {cards.map((card, idx) => {
+      {cards.map((card) => {
         const isSelected = selectedIds.includes(card._labId);
         const reachedLimit = selectable && !isSelected && selectedIds.length >= 5;
 
@@ -98,86 +216,6 @@ export default function Lab() {
     </div>
   );
 
-  const toggleCard = (labId) => {
-    setMessage('');
-    setResult(null);
-    setFusionState(null);
-
-    setSelectedIds((prev) => {
-      if (prev.includes(labId)) {
-        return prev.filter((id) => id !== labId);
-      }
-
-      if (prev.length >= 5) {
-        return prev;
-      }
-
-      return [...prev, labId];
-    });
-  };
-
-  const handleRarityChange = (rarity) => {
-    setSelectedRarity(rarity);
-    setSelectedIds([]);
-    setResult(null);
-    setFusionState(null);
-    setMessage('Pick 5 cards from one rarity, then transform them.');
-  };
-
-  const transform = () => {
-    if (!canTransform) {
-      setMessage('You need exactly 5 cards from the selected rarity.');
-      return;
-    }
-
-    const candidates = pool.filter((game) => game.rarity === nextRarity);
-    if (candidates.length === 0) {
-      setMessage(`No ${nextRarity} cards available in the database yet.`);
-      return;
-    }
-
-    const selectedIdSet = new Set(selectedIds);
-    
-    const remaining = collection.filter((card) => !selectedIdSet.has(card._labId));
-
-    if (Math.random() * 100 > FUSION_SUCCESS_RATE) {
-      const toSave = remaining.map(({ _labId, ...rest }) => rest);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      setCollection(remaining);
-      setResult(null);
-      setFusionState('failed');
-      setMessage('FUSION FAILED: The chamber destabilized and consumed all 5 cards.');
-      setSelectedIds([]);
-      setResultAnimKey((prev) => prev + 1);
-      return;
-    }
-
-    const reward = candidates[Math.floor(Math.random() * candidates.length)];
-    
-    const isDuplicateSecret = ['CELESTIAL', 'UNREAL'].includes(reward.rarity) && remaining.some(c => c.id === reward.id);
-    
-    if (isDuplicateSecret) {
-      setResult({ ...reward, isRepeatedCelestial: true });
-      setFusionState('failed');
-      const toSave = remaining.map(({ _labId, ...rest }) => rest);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      setCollection(remaining);
-      setMessage(`Fusion failed: You already own this ${reward.rarity} card.`);
-    } else {
-      const newReward = { ...reward, _labId: `${reward.id}-${Date.now()}` };
-      const updatedCollection = [...remaining, newReward];
-      const toSave = updatedCollection.map(({ _labId, ...rest }) => rest);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      setCollection(updatedCollection);
-      setResult(reward);
-      setFusionState('success');
-      setMessage(`Transformed into ${reward.name} (${reward.rarity})`);
-    }
-
-    setSelectedIds([]);
-    setResultAnimKey((prev) => prev + 1);
-  };
-
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -188,7 +226,7 @@ export default function Lab() {
       <div className="flex flex-wrap gap-2 justify-center">
         {RARITIES.map((rarity) => {
           const active = rarity === selectedRarity;
-          if (rarity === 'UNREAL') return;
+          if (rarity === 'UNREAL') return null;
           return (
             <button
               key={rarity}
@@ -239,10 +277,10 @@ export default function Lab() {
             <button
               type="button"
               onClick={transform}
-              disabled={!canTransform}
+              disabled={!canTransform || fusionState === 'fusing'}
               className="w-full py-2 rounded-md font-semibold bg-blue-500 text-white hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition"
             >
-              Transform
+              {fusionState === 'fusing' ? 'Fusing...' : 'Transform'}
             </button>
             <p className="text-xs text-slate-400">{message}</p>
           </div>
