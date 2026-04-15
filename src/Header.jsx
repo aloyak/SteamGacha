@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import CursorPopup from './components/Popup';
 import { syncLocalCollectionToCloud } from './collectionSync';
+import { STORAGE_KEYS } from './config';
 
 const pages = [
   { id: 'packs', label: 'Packs' },
@@ -28,6 +29,11 @@ export default function Header({ page, onPageChange, session, money = 0, collect
       console.error("Final sync during logout failed:", err);
     } finally {
       await supabase.auth.signOut();
+
+      Object.values(STORAGE_KEYS).forEach((key) => {
+        localStorage.removeItem(key);
+      });
+      localStorage.removeItem('steam_money');
 
       setIsLoggingOut(false);
       onPageChange('packs');
