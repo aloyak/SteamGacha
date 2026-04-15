@@ -59,3 +59,35 @@ export async function syncLocalCollectionToCloud(session) {
 
   return { skipped: false, syncedCount: rows.length };
 }
+
+export async function hydrateLocalCollectionFromCloud(session, options = {}) {
+  if (!session?.user?.id) {
+    return { skipped: true, hydratedCount: 0 };
+  }
+
+  const { onlyIfLocalEmpty = true } = options;
+  const localCards = loadLocalCollection();
+
+  if (onlyIfLocalEmpty && localCards.length > 0) {
+    return { skipped: true, hydratedCount: 0 };
+  }
+
+  const { data, error } = await supabase
+    .from('card_instances')
+    .select('catalog_id, rarity')
+    .eq('owner_id', session.user.id);
+
+  if (error) {
+    throw error;
+  }
+
+  const hydrated = (data || [])
+    .map((row) => ({
+      id: Number(row.catalog_id),
+      rarity: row.rarity
+    }))
+    .filter((card) => Number.isFinite(card.id));
+
+  saveLocalCollection(hydrated);
+  return { skipped: false, hydratedCount: hydrated.length };
+}

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { syncLocalCollectionToCloud } from './collectionSync';
+import {
+  hydrateLocalCollectionFromCloud,
+  syncLocalCollectionToCloud
+} from './collectionSync';
 import { STORAGE_KEYS } from './config';
 import Header from './Header.jsx';
 import PacksPage from './pages/Packs.jsx';
@@ -41,7 +44,10 @@ export default function App() {
       return;
     }
 
-    if (localStorage.getItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION) === '1') {
+    const hasPendingNewAccountMigration =
+      localStorage.getItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION) === '1';
+
+    if (hasPendingNewAccountMigration) {
       syncLocalCollectionToCloud(session)
         .then(() => {
           localStorage.removeItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION);
@@ -49,6 +55,10 @@ export default function App() {
         .catch((error) => {
           console.error('Pending new-account migration failed:', error);
         });
+    } else {
+      hydrateLocalCollectionFromCloud(session, { onlyIfLocalEmpty: true }).catch((error) => {
+        console.error('Cloud hydrate failed:', error);
+      });
     }
 
     const timer = setInterval(async () => {
