@@ -7,7 +7,7 @@ import { loadLocalCollection, saveLocalCollectionToCloud } from '../collectionSy
 const MAX_PACKS = PACK_CONFIG.MAX_PACKS;
 const COOLDOWN_MS = PACK_CONFIG.COOLDOWN_MS;
 
-export default function PacksPage({ session }) {
+export default function PacksPage({ session, onOpeningChange }) {
   const [pool, setPool] = useState([]);
   const [pack, setPack] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(-1);
@@ -19,6 +19,14 @@ export default function PacksPage({ session }) {
   const [packsLeft, setPacksLeft] = useState(MAX_PACKS);
   const [nextReset, setNextReset] = useState(null);
   const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    onOpeningChange?.(isOpening);
+  }, [isOpening, onOpeningChange]);
+
+  useEffect(() => {
+    return () => onOpeningChange?.(false);
+  }, [onOpeningChange]);
 
   useEffect(() => {
     fetch('/games.json').then(res => res.json()).then(setPool);

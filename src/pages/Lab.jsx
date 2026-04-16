@@ -100,6 +100,17 @@ export default function Lab({ session }) {
     setMessage('Pick 5 cards from one rarity, then transform them.');
   };
 
+  const selectFirstFiveCards = () => {
+    const firstFiveIds = rarityCards.slice(0, 5).map((card) => card._labId);
+    setSelectedIds(firstFiveIds);
+    setResult(null);
+    setFusionState(null);
+    setMessage(firstFiveIds.length === 5
+      ? 'First 5 cards selected.'
+      : 'Selected all available cards in this rarity.'
+    );
+  };
+
   const transform = async () => {
     if (!canTransform) {
       setMessage('You need exactly 5 cards from the selected rarity.');
@@ -206,8 +217,18 @@ export default function Lab({ session }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <section className="p-4 md:p-5 bg-slate-800/40 rounded-xl border border-white/10 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Collection: {selectedRarity}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold">Collection: {selectedRarity}</h2>
+              <button
+                type="button"
+                onClick={selectFirstFiveCards}
+                disabled={rarityCards.length === 0}
+                className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest rounded-md border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                Select First 5
+              </button>
+            </div>
             <span className="text-xs text-slate-400">Selected {selectedCards.length}/5</span>
           </div>
 

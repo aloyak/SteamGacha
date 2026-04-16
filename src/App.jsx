@@ -29,6 +29,7 @@ export default function App() {
   const [page, setPage] = useState('packs');
   const [isBootstrapSyncing, setIsBootstrapSyncing] = useState(false);
   const [money, setMoneyState] = useState(() => getMoney());
+  const [isPackOpening, setIsPackOpening] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -126,6 +127,10 @@ export default function App() {
       return;
     }
 
+    if (nextPage !== 'packs') {
+      setIsPackOpening(false);
+    }
+
     setPage(nextPage);
   };
 
@@ -136,6 +141,7 @@ export default function App() {
         onPageChange={handlePageChange} 
         session={session} 
         money={money}
+        hidden={page === 'packs' && isPackOpening}
       />
       <main className="container mx-auto flex flex-1 flex-col px-4 pt-6">
         {session && isBootstrapSyncing ? (
@@ -144,7 +150,7 @@ export default function App() {
           </div>
         ) : (
           <>
-        {page === 'packs' && <PacksPage session={session} />}
+        {page === 'packs' && <PacksPage session={session} onOpeningChange={setIsPackOpening} />}
         {page === 'collection' && <CollectionPage />}
         {page === 'lab' && <Lab session={session} />}
         {page === 'market' && <Market session={session} />}

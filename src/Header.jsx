@@ -14,7 +14,7 @@ const pages = [
   { id: 'market', label: 'Market' }
 ];
 
-export default function Header({ page, onPageChange, session, money = 0, collection = [] }) {
+export default function Header({ page, onPageChange, session, money = 0, collection = [], hidden = false }) {
   const [arcanaHover, setArcanaHover] = useState({ open: false, x: 0, y: 0 });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -77,7 +77,7 @@ export default function Header({ page, onPageChange, session, money = 0, collect
   }, [liveCollection]);
 
   return (
-    <header className="border-b border-white/10 bg-[#050814] px-4 py-4 relative">
+    <header className={`border-b border-white/10 bg-[#050814] px-4 py-4 relative transition-all duration-300 ${hidden ? 'pointer-events-none -translate-y-full opacity-0' : 'translate-y-0 opacity-100'}`}>
       {toastMessage && (
         <div className="absolute right-4 top-2 z-50 max-w-md rounded-md border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-amber-100">
           {toastMessage}
