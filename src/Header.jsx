@@ -9,7 +9,8 @@ const pages = [
   { id: 'packs', label: 'Packs' },
   { id: 'collection', label: 'Collection' },
   { id: 'lab', label: 'Lab' },
-  { id: 'market', label: 'Market' }
+  { id: 'market', label: 'Market' },
+  { id: 'leaderboard', label: 'Leaderboard' }
 ];
 
 export default function Header({ page, onPageChange, session, money = 0, collection = [] }) {

@@ -10,6 +10,7 @@ import PacksPage from './pages/Packs.jsx';
 import CollectionPage from './pages/Collection.jsx';
 import Lab from './pages/Lab.jsx';
 import Market from './pages/Market.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
 import Auth from './Auth.jsx'; 
 
 const AUTO_SYNC_INTERVAL_MS = 120000;
@@ -118,6 +119,7 @@ export default function App() {
         {page === 'collection' && <CollectionPage />}
         {page === 'lab' && <Lab session={session} />}
         {page === 'market' && <Market session={session} />}
+        {page === 'leaderboard' && <Leaderboard />}
         {page === 'auth' && <Auth onAuthSuccess={() => setPage('packs')} />}
           </>
         )}
