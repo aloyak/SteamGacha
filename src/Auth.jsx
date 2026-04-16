@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import { loadLocalCollection, syncLocalCollectionToCloud } from './collectionSync';
 import { STORAGE_KEYS } from './config';
+import { getMoney, hasLocalMoney, syncLocalMoneyToCloud } from './economy';
 
 export default function Auth({ onAuthSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,9 @@ export default function Auth({ onAuthSuccess }) {
           const activeSession = data?.session;
           if (activeSession) {
             await syncLocalCollectionToCloud(activeSession);
+            if (hasLocalMoney()) {
+              await syncLocalMoneyToCloud(activeSession, { moneySnapshot: getMoney() });
+            }
             localStorage.removeItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION);
           } else {
             localStorage.setItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION, '1');

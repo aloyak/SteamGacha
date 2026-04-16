@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import {
   hydrateLocalCollectionFromCloud,
@@ -10,16 +10,25 @@ import PacksPage from './pages/Packs.jsx';
 import CollectionPage from './pages/Collection.jsx';
 import Lab from './pages/Lab.jsx';
 import Market from './pages/Market.jsx';
+import Recycling from './pages/Recycling.jsx';
 import Leaderboard from './pages/Leaderboard.jsx';
+import Arcana from './pages/Arcana.jsx';
 import Auth from './Auth.jsx'; 
+import {
+  hasLocalMoney,
+  getMoney,
+  MONEY_CHANGED_EVENT,
+  hydrateLocalMoneyFromCloud,
+  syncLocalMoneyToCloud
+} from './economy';
 
 const AUTO_SYNC_INTERVAL_MS = 120000;
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [page, setPage] = useState('packs');
   const [isBootstrapSyncing, setIsBootstrapSyncing] = useState(false);
+  const [money, setMoneyState] = useState(() => getMoney());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,12 +43,23 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session) {
-      fetchProfile();
-    } else {
-      setProfile(null);
-    }
-  }, [session]);
+    const refreshMoney = (event) => {
+      if (typeof event?.detail === 'number') {
+        setMoneyState(event.detail);
+        return;
+      }
+
+      setMoneyState(getMoney());
+    };
+
+    window.addEventListener(MONEY_CHANGED_EVENT, refreshMoney);
+    window.addEventListener('storage', refreshMoney);
+
+    return () => {
+      window.removeEventListener(MONEY_CHANGED_EVENT, refreshMoney);
+      window.removeEventListener('storage', refreshMoney);
+    };
+  }, []);
 
   useEffect(() => {
     if (!session) {
@@ -58,11 +78,15 @@ export default function App() {
       try {
         if (hasPendingNewAccountMigration) {
           await syncLocalCollectionToCloud(session);
+          if (hasLocalMoney()) {
+            await syncLocalMoneyToCloud(session);
+          }
           localStorage.removeItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION);
         }
 
         // Login should always hydrate local cache from cloud as the source of truth.
         await hydrateLocalCollectionFromCloud(session);
+        await hydrateLocalMoneyFromCloud(session);
       } catch (error) {
         if (!cancelled) {
           console.error('Session bootstrap sync failed:', error);
@@ -79,6 +103,7 @@ export default function App() {
     const timer = setInterval(async () => {
       try {
         await syncLocalCollectionToCloud(session);
+        await syncLocalMoneyToCloud(session);
       } catch (error) {
         console.error('Auto sync failed:', error);
       }
@@ -90,23 +115,27 @@ export default function App() {
     };
   }, [session]);
 
-  async function fetchProfile() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-    
-    if (!error) setProfile(data);
-  }
+  const canAccessArcana = () => {
+    const collection = loadLocalCollection();
+    const hasMythic = collection.some((card) => card.rarity === 'MYTHIC');
+    return collection.length >= 150 && hasMythic;
+  };
+
+  const handlePageChange = (nextPage) => {
+    if (nextPage === 'arcana' && !canAccessArcana()) {
+      return;
+    }
+
+    setPage(nextPage);
+  };
 
   return (
     <div className="flex min-h-screen flex-col text-slate-100">
       <Header 
         page={page} 
-        onPageChange={setPage} 
+        onPageChange={handlePageChange} 
         session={session} 
-        money={profile?.balance || 0} 
+        money={money}
       />
       <main className="container mx-auto flex flex-1 flex-col px-4 pt-6">
         {session && isBootstrapSyncing ? (
@@ -119,6 +148,8 @@ export default function App() {
         {page === 'collection' && <CollectionPage />}
         {page === 'lab' && <Lab session={session} />}
         {page === 'market' && <Market session={session} />}
+        {page === 'recycling' && <Recycling session={session} />}
+        {page === 'arcana' && <Arcana />}
         {page === 'leaderboard' && <Leaderboard />}
         {page === 'auth' && <Auth onAuthSuccess={() => setPage('packs')} />}
           </>

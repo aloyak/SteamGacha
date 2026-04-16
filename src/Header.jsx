@@ -1,24 +1,48 @@
-import { FaGithub, FaSignOutAlt } from 'react-icons/fa';
-import { useMemo, useState } from 'react';
+import { FaGithub, FaSignOutAlt, FaTrophy } from 'react-icons/fa';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from './supabaseClient';
 import CursorPopup from './components/Popup';
-import { clearLocalCollection, syncLocalCollectionToCloud } from './collectionSync';
+import { clearLocalCollection, loadLocalCollection, syncLocalCollectionToCloud } from './collectionSync';
 import { STORAGE_KEYS } from './config';
+import { clearLocalMoney, syncLocalMoneyToCloud } from './economy';
 
 const pages = [
   { id: 'packs', label: 'Packs' },
   { id: 'collection', label: 'Collection' },
   { id: 'lab', label: 'Lab' },
-  { id: 'market', label: 'Market' },
-  { id: 'leaderboard', label: 'Leaderboard' }
+  { id: 'recycling', label: 'Recycling' },
+  { id: 'market', label: 'Market' }
 ];
 
 export default function Header({ page, onPageChange, session, money = 0, collection = [] }) {
   const [arcanaHover, setArcanaHover] = useState({ open: false, x: 0, y: 0 });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [liveCollection, setLiveCollection] = useState(() => (
+    collection.length > 0 ? collection : loadLocalCollection()
+  ));
 
   const username = session?.user?.user_metadata?.username || 'Guest';
+
+  useEffect(() => {
+    if (collection.length > 0) {
+      setLiveCollection(collection);
+    }
+  }, [collection]);
+
+  useEffect(() => {
+    const refreshFromLocal = () => {
+      setLiveCollection(loadLocalCollection());
+    };
+
+    window.addEventListener('steamgacha:collection-updated', refreshFromLocal);
+    window.addEventListener('storage', refreshFromLocal);
+
+    return () => {
+      window.removeEventListener('steamgacha:collection-updated', refreshFromLocal);
+      window.removeEventListener('storage', refreshFromLocal);
+    };
+  }, []);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -26,6 +50,7 @@ export default function Header({ page, onPageChange, session, money = 0, collect
     try {
       if (session) {
         await syncLocalCollectionToCloud(session);
+        await syncLocalMoneyToCloud(session);
       }
     } catch (err) {
       console.error("Final sync during logout failed:", err);
@@ -39,7 +64,7 @@ export default function Header({ page, onPageChange, session, money = 0, collect
       localStorage.removeItem(STORAGE_KEYS.PACKS_REMAINING);
       localStorage.removeItem(STORAGE_KEYS.PACKS_RESET);
       localStorage.removeItem(STORAGE_KEYS.PENDING_NEW_ACCOUNT_MIGRATION);
-      localStorage.removeItem('steam_money');
+      clearLocalMoney();
 
       setIsLoggingOut(false);
       onPageChange('packs');
@@ -47,10 +72,9 @@ export default function Header({ page, onPageChange, session, money = 0, collect
   };
 
   const canAccessArcana = useMemo(() => {
-    const uniqueIds = new Set(collection.map((c) => c.id || c.catalog_id)).size;
-    const hasMythic = collection.some((c) => c.rarity === 'MYTHIC');
-    return uniqueIds >= 150 && hasMythic;
-  }, [collection]);
+    const hasMythic = liveCollection.some((c) => c.rarity === 'MYTHIC');
+    return liveCollection.length >= 150 && hasMythic;
+  }, [liveCollection]);
 
   return (
     <header className="border-b border-white/10 bg-[#050814] px-4 py-4 relative">
@@ -97,8 +121,15 @@ export default function Header({ page, onPageChange, session, money = 0, collect
           >
             <button
               disabled={!canAccessArcana}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition ${
-                !canAccessArcana ? 'opacity-30 cursor-not-allowed' : 'text-slate-400 hover:text-white'
+              onClick={() => {
+                if (canAccessArcana) onPageChange('arcana');
+              }}
+              className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-md transition ${
+                !canAccessArcana
+                  ? 'opacity-30 cursor-not-allowed'
+                  : page === 'arcana'
+                    ? 'bg-white/10 text-white'
+                    : 'text-slate-400 hover:text-white'
               }`}
             >
               Arcana
@@ -113,6 +144,18 @@ export default function Header({ page, onPageChange, session, money = 0, collect
         </nav>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => onPageChange('leaderboard')}
+            className={`flex h-10 w-10 items-center justify-center rounded-md border transition cursor-pointer ${
+              page === 'leaderboard'
+                ? 'border-amber-300/40 bg-amber-500/10 text-amber-200'
+                : 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
+            }`}
+            title="Leaderboard"
+            aria-label="Open leaderboard"
+          >
+            <FaTrophy className="h-4 w-4" />
+          </button>
           {session ? (
             <div className="flex items-center gap-3 pl-3 pr-1 py-1 bg-white/5 border border-white/10 rounded-lg">
               <div className="text-right">

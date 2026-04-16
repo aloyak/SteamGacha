@@ -4,6 +4,20 @@ import { supabase } from './supabaseClient';
 const COLLECTION_KEY = STORAGE_KEYS.COLLECTION;
 let syncQueue = Promise.resolve();
 
+function notifyCollectionUpdated(cards) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent('steamgacha:collection-updated', {
+      detail: {
+        count: Array.isArray(cards) ? cards.length : 0
+      }
+    })
+  );
+}
+
 export function loadLocalCollection() {
   try {
     const raw = localStorage.getItem(COLLECTION_KEY);
@@ -17,6 +31,7 @@ export function loadLocalCollection() {
 
 export function saveLocalCollection(cards) {
   localStorage.setItem(COLLECTION_KEY, JSON.stringify(cards));
+  notifyCollectionUpdated(cards);
 }
 
 export async function saveLocalCollectionToCloud(cards, session) {
@@ -31,6 +46,7 @@ export async function saveLocalCollectionToCloud(cards, session) {
 
 export function clearLocalCollection() {
   localStorage.removeItem(COLLECTION_KEY);
+  notifyCollectionUpdated([]);
 }
 
 export function toPersistedCard(card) {

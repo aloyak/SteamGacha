@@ -74,8 +74,8 @@ export default function Leaderboard() {
         <p className="text-slate-400">Top users ranked by account balance</p>
       </div>
 
-      <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-        <div className="grid grid-cols-[72px_1fr_160px] border-b border-white/10 bg-white/5 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+      <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-slate-800/50">
+        <div className="grid grid-cols-[72px_1fr_160px] border-b border-white/10  px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
           <span>Rank</span>
           <span>User</span>
           <span className="text-right">Balance</span>
@@ -96,7 +96,7 @@ export default function Leaderboard() {
 
         {!loading && !errorMessage && rows.length === 0 && (
           <div className="px-4 py-16 text-center text-xs font-black uppercase tracking-[0.3em] text-slate-500">
-            No users found
+            Log in to see the leaderboard!
           </div>
         )}
 
@@ -111,11 +111,10 @@ export default function Leaderboard() {
                     : index === 2
                       ? 'text-orange-300'
                       : 'text-slate-400';
-
               return (
                 <div
                   key={user.id}
-                  className="grid grid-cols-[72px_1fr_160px] items-center border-b border-white/5 px-4 py-3 last:border-b-0"
+                  className="grid bg-slate-800/50 grid-cols-[72px_1fr_160px] items-center border-b border-white/5 px-4 py-3 last:border-b-0"
                 >
                   <span className={`text-sm font-black ${medalClass}`}>#{index + 1}</span>
                   <span className="truncate text-sm font-semibold text-white">
