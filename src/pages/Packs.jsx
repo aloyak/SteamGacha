@@ -8,6 +8,8 @@ const MAX_PACKS = PACK_CONFIG.MAX_PACKS;
 const COOLDOWN_MS = PACK_CONFIG.COOLDOWN_MS;
 
 export default function PacksPage({ session, onOpeningChange }) {
+  const INPUT_COOLDOWN_MS = 500;
+  const lastSpaceInputRef = useRef(0);
   const [pool, setPool] = useState([]);
   const [pack, setPack] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(-1);
@@ -68,6 +70,10 @@ export default function PacksPage({ session, onOpeningChange }) {
     const handleKeyDown = (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
+        const now = Date.now();
+        if (now - lastSpaceInputRef.current < INPUT_COOLDOWN_MS) return;
+        lastSpaceInputRef.current = now;
+
         if (currentIdx === -1) generatePack();
         else if (currentIdx >= 0 && currentIdx < 4) setCurrentIdx(prev => prev + 1);
         else if (currentIdx === 4) handleFinish();
